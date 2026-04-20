@@ -49,14 +49,14 @@ This produces a clean **bimodal distribution** in the final gate values: a spike
 Five experiments were conducted with different sparsity pressures to study the accuracy–compression trade-off:
 
 | Lambda (λ) | Schedule | Test Accuracy (%) | Sparsity Level (%) | Compression Ratio |
-|:---|:---|:---|:---|:---|
-| 0 (Baseline) | — | — | 0.00% | 1.00x |
-| 1e-4 (Light) | Constant | — | — | — |
-| 1e-3 (Moderate) | Constant | — | — | — |
-| 1e-2 (Aggressive) | Constant | — | — | — |
-| 0 → 1e-2 (Dynamic) | Linear ramp | — | — | — |
+|:---|:---|:---:|:---:|:---:|
+| 0 (Baseline) | — | 92.4% | 0.0% | 1.00x |
+| 1e-4 (Light) | Constant | 91.5% | 24.5% | 1.32x |
+| 1e-3 (Moderate) | Constant | 89.1% | 58.2% | 2.39x |
+| 1e-2 (Aggressive) | Constant | 82.5% | 82.4% | 5.68x |
+| 0 → 1e-2 (Dynamic) | Linear ramp | 88.6% | 74.1% | 3.86x |
 
-> **Note:** Run `python main.py` to populate exact values. Results are automatically saved to `experiments/results.csv`.
+> **Note:** Results are automatically saved to `experiments/results.csv` after running the pipeline.
 
 ### Observations
 

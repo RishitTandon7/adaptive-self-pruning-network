@@ -99,7 +99,13 @@ class SelfPruningNetwork(nn.Module):
         return results
 
     def count_parameters(self) -> dict:
-        """Count total and effective (non-zero) parameters."""
-        total = sum(p.numel() for p in self.parameters())
-        nonzero = sum((p != 0).sum().item() for p in self.parameters())
+        """Count total and effective (non-zero) parameters.
+        In a deployed model, gate_scores are absorbed into weights, so we only count weight and bias.
+        """
+        total = 0
+        nonzero = 0
+        for layer in self.get_prunable_layers():
+            total += layer.weight.numel() + layer.bias.numel()
+            nonzero += (layer.weight != 0).sum().item() + (layer.bias != 0).sum().item()
+            
         return {"total": total, "nonzero": nonzero, "compression": total / max(nonzero, 1)}

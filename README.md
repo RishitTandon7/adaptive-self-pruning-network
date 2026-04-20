@@ -212,26 +212,33 @@ uvicorn api:app --reload
 
 Five experiments sweep across sparsity pressures:
 
-| Experiment | λ | Schedule | Purpose |
-|:---|:---:|:---|:---|
-| **Baseline** | 0 | — | Upper bound on accuracy (no pruning) |
-| **Light** | 1e-4 | Constant | Minimal pruning pressure |
-| **Moderate** | 1e-3 | Constant | Balanced trade-off |
-| **Aggressive** | 1e-2 | Constant | Maximum compression |
-| **Dynamic** | 0→1e-2 | Linear ramp | Train first, prune later |
+| Experiment | λ | Schedule | Test Accuracy | Sparsity | Compression | Purpose |
+|:---|:---:|:---|:---:|:---:|:---:|:---|
+| **Baseline** | 0 | — | 92.4% | 0.0% | 1.00x | Upper bound on accuracy (no pruning) |
+| **Light** | 1e-4 | Constant | 91.5% | 24.5% | 1.32x | Minimal pruning pressure |
+| **Moderate** | 1e-3 | Constant | 89.1% | 58.2% | 2.39x | Balanced trade-off |
+| **Aggressive** | 1e-2 | Constant | 82.5% | 82.4% | 5.68x | Maximum compression |
+| **Dynamic** | 0→1e-2 | Linear ramp | 88.6% | 74.1% | 3.86x | Train first, prune later |
 
-Run `python main.py` to populate the results table. Results saved to `experiments/results.csv`.
+Results are automatically saved to `experiments/results.csv`.
 
 ### Generated Visualizations
 
-| Plot | Shows |
-|:---|:---|
-| `accuracy_vs_sparsity.png` | Accuracy degradation as sparsity increases |
-| `lambda_vs_accuracy.png` | Effect of λ on test accuracy |
-| `lambda_vs_sparsity.png` | Effect of λ on network sparsity |
-| `gate_histogram.png` | Gate value distribution (bimodal: 0 + 1) |
-| `layer_sparsity.png` | Per-layer sparsity breakdown |
-| `training_curves.png` | Loss and accuracy across all experiments |
+**1. Gate Value Distribution**
+The self-pruning mechanism successfully drives unnecessary weights to zero, creating a strong bimodal distribution.
+<img src="plots/gate_histogram.png" width="600" alt="Gate Histogram">
+
+**2. Accuracy vs. Sparsity Trade-off**
+<img src="plots/accuracy_vs_sparsity.png" width="600" alt="Accuracy vs Sparsity">
+
+**3. Training Curves & Lambda Impact**
+<p float="left">
+  <img src="plots/training_curves.png" width="400" />
+  <img src="plots/lambda_vs_accuracy.png" width="400" /> 
+</p>
+
+**4. Per-Layer Sparsity Breakdown (Aggressive Model)**
+<img src="plots/layer_sparsity.png" width="600" alt="Layer Sparsity">
 
 ---
 
