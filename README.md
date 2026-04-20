@@ -416,12 +416,6 @@ Contributions welcome! Areas for enhancement:
 
 ---
 
-## 📄 License
-
-MIT License - see LICENSE file
-
----
-
 ## 🔗 Related Work
 
 **Pruning Techniques:**
@@ -433,4 +427,4 @@ MIT License - see LICENSE file
 
 **Built for:** Tredence Analytics AI Engineering Internship 2025  
 **Author:** Rishit Tandon  
-**Last Updated:** April 2026
+            RA2311003010587
