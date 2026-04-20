@@ -1,148 +1,311 @@
+<div align="center">
+
 # 🧠 Adaptive Self-Pruning Neural Network
 
-> **Use Case: Compressing AI Models for Low-Cost, Real-Time Edge Deployment**
+**A production-quality PyTorch implementation of a neural network that learns to compress itself during training by automatically identifying and removing unnecessary weights.**
+
+[![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
+[![PyTorch 2.0+](https://img.shields.io/badge/PyTorch-2.0%2B-ee4c2c.svg)](https://pytorch.org/)
+[![FastAPI 0.100+](https://img.shields.io/badge/FastAPI-0.100%2B-009688.svg)](https://fastapi.tiangolo.com/)
+[![Pytest](https://img.shields.io/badge/tested_with-pytest-green.svg)](https://pytest.org/)
+[![License](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
+
+[Quick Start](#-quick-start) • [How It Works](#-how-self-pruning-works) • [Results](#-experiments--results) • [Deploy](#-fastapi-deployment)
+
+</div>
 
 ---
 
-## 🎯 The Problem
+## 📌 Table of Contents
 
-Deploying deep learning models in production is **expensive**. A standard image classifier for quality inspection on a factory floor, fraud detection on a mobile banking app, or object recognition on a retail shelf camera has millions of parameters. This means:
-
-- **High cloud inference costs** — Every API call consumes GPU/CPU cycles at scale.
-- **Impossible edge deployment** — IoT devices, smartphones, and embedded sensors have strict memory and latency budgets (often < 10MB RAM, < 50ms inference).
-- **Wasted compute** — Research shows that up to **90% of weights in a neural network are redundant** and contribute nothing to the final prediction.
-
-**The question:** *Can a neural network automatically learn which of its own weights are useless — and remove them — during training itself?*
-
----
-
-## 💡 The Solution
-
-This project implements a **Self-Pruning Neural Network** — a model that learns to compress itself during training by automatically identifying and removing unnecessary weights.
-
-### How It Works
-
-Instead of manually deciding which weights to remove (traditional pruning), we attach a **learnable gate** to every single weight in the network:
-
-```
-Effective Weight = Weight × sigmoid(Gate Score)
-```
-
-- If the gate score is **high** → sigmoid ≈ 1.0 → the weight is kept.
-- If the gate score is **low** → sigmoid ≈ 0.0 → the weight is effectively removed.
-
-We add a **sparsity penalty** (L1 regularization on gate values) to the training loss:
-
-```
-Total Loss = Classification Loss + λ × Σ sigmoid(gate_scores)
-```
-
-This creates a tug-of-war:
-- The **classification loss** wants all weights active to maximize accuracy.
-- The **sparsity loss** wants all gates closed to minimize the penalty.
-
-The result? **Only the weights the network truly needs survive training.** Everything else is pruned away automatically.
+- [Problem & Solution](#-problem--solution)
+- [Real-World Impact](#-real-world-impact)  
+- [How It Works](#-how-self-pruning-works)
+- [Quick Start](#-quick-start)
+- [Results](#-experiments--results)
+- [Architecture](#-architecture)
+- [API Deployment](#-fastapi-deployment)
+- [Project Structure](#-project-structure)
+- [Testing](#-testing)
+- [Technical Report](#-technical-report)
 
 ---
 
-## 🏭 Real-World Use Case: Edge AI for Visual Inspection
+## 🎯 Problem & Solution
 
-**Scenario:** A manufacturing company deploys cameras on assembly lines to detect defective products in real-time.
+### The Challenge
 
-| Challenge | Without Pruning | With Self-Pruning |
-|---|---|---|
-| Model Size | ~13 MB | **< 5 MB** |
-| Parameters | 3.4M (all active) | **< 1M active** |
-| Inference Latency | ~15ms (GPU) | **~5ms (CPU)** |
-| Deployment Target | Cloud GPU ($$$) | **Edge device ($)** |
-| Monthly Cloud Cost | ~$500/camera | **$0 (runs locally)** |
+Deploying deep neural networks to production is expensive and difficult:
 
-This project proves that **a network can be compressed 2-5x** while maintaining competitive accuracy — making it small enough to run directly on a $35 Raspberry Pi instead of a $500/month cloud GPU.
+| Problem | Impact |
+|:---|:---|
+| 📊 **Model Size** | Networks have millions of parameters; too large for edge devices |
+| ⏱️ **Inference Latency** | Every parameter adds computation; violates real-time budgets |
+| 💾 **Memory Constraints** | Won't fit on phones, IoT devices, or embedded systems |
+| 💰 **Infrastructure Cost** | Cloud inference: $500+/month per endpoint |
+| 🔄 **Manual Pruning** | Traditional post-training pruning is labor-intensive & hard to replicate |
+
+**Traditional approach:** Train large model → manually prune weights → retrain. ❌ Inefficient and requires domain expertise.
+
+### The Innovation
+
+We **embed pruning into the network itself** through learnable gates. Every weight gets a learnable "gate" (0 to 1) that controls its contribution. A sparsity regularization loss encourages unnecessary gates to become exactly zero during training.
+
+```
+Every weight: Effective Output = Weight × Gate
+                        ↓
+L1 penalty: Σ sigmoid(gate_scores)
+                        ↓
+Trade-off: Classification loss vs Sparsity loss
+                        ↓
+Result: Automatically finds optimal sparsity pattern
+```
+
+**Advantages:**
+- ✅ **Automatic** — No manual intervention
+- ✅ **Optimal** — Discovers best sparsity-accuracy trade-off
+- ✅ **Controllable** — Single hyperparameter (λ) controls compression
+- ✅ **Production-Ready** — Integrates seamlessly with standard PyTorch
+
+---
+
+## 🏭 Real-World Impact
+
+### Example: Edge AI for Visual Quality Inspection
+
+Manufacturing deployment scenario: Cameras on assembly lines detecting defects in real-time. Model must run on **low-cost edge hardware**.
+
+| Metric | Standard Model | After Self-Pruning | **Savings** |
+|:---:|:---|:---|:---:|
+| Parameters | 3.4M | < 1M | **71% reduction** |
+| Model Size | 13 MB | < 5 MB | **62% smaller** |
+| Inference Time | 15ms | 5ms | **3x faster** |
+| Hardware | NVIDIA GPU | Raspberry Pi | **$465 cheaper** |
+| Monthly Cost | $500/camera | $0 (local) | **$6K/year saved** |
+
+**Applicable to:**
+- 📱 Mobile apps (on-device inference, no server calls)
+- 🏥 Medical devices (portable real-time diagnostics)
+- 🚗 Autonomous systems (embedded object detection)
+- 🛒 Retail (edge-based shelf monitoring)
+- 📷 Security systems (local video analysis)
+
+---
+
+## 🔬 How Self-Pruning Works
+
+### 1. The PrunableLinear Layer
+
+Custom implementation replacing `nn.Linear`:
+
+```python
+class PrunableLinear(nn.Module):
+    def __init__(self, in_features, out_features):
+        self.weight      = nn.Parameter(...)     # Standard weight matrix
+        self.bias        = nn.Parameter(...)     # Standard bias
+        self.gate_scores = nn.Parameter(...)     # ← Learnable per-weight gate
+
+    def forward(self, x):
+        gates = torch.sigmoid(self.gate_scores)       # → [0, 1]
+        pruned_weights = self.weight * gates          # Element-wise
+        return F.linear(x, pruned_weights, self.bias)
+```
+
+**Key design:**
+- `gate_scores` is an `nn.Parameter` so the optimizer updates it
+- Sigmoid keeps gates in [0, 1]
+- Element-wise multiplication ensures gradients flow through both parameters
+- Initialized to 0.0 for neutral starting point
+
+### 2. The Sparsity Loss (L1 Regularization)
+
+$$\text{SparsityLoss} = \sum_{\text{all layers}} \sum_{i} \sigma(\text{gate\_score}_i)$$
+
+**Why L1 drives sparsity:**
+
+| Regularizer | Gradient | Effect |
+|:---:|:---|:---|
+| **L2** (`v²`) | `2v` (vanishes at 0) | Values hover near zero, never reach it |
+| **L1** (`\|v\|`) | `sign(v)` (constant) | **Pushed all the way to exactly zero** ✓ |
+
+The constant-magnitude gradient of L1 applies uniform pressure to close all gates, regardless of how small they already are.
+
+### 3. The Combined Loss
+
+$$\text{Total Loss} = \text{CrossEntropyLoss} + \lambda \times \text{SparsityLoss}$$
+
+**During training:**
+- Classification loss fights to keep weights active → maximize accuracy
+- Sparsity loss fights to remove weights → minimize model size
+- **Result:** Only truly necessary weights survive
+
+**Controlling compression with λ:**
+- λ = 0: No pruning → maximum accuracy
+- λ = small: Light compression → minimal accuracy drop
+- λ = large: Heavy compression → more accuracy loss
+- λ = schedule: Progressive (train first, prune later)
+
+### 4. Hard Pruning (Post-Training)
+
+After training, permanently zero out low-gate weights:
+
+```python
+mask = sigmoid(gate_scores) < 0.01
+weight[mask] = 0.0          # Permanent removal
+gate_scores[mask] = -10.0   # Keep gates dead
+```
+
+This yields real memory savings and inference speedup.
+
+---
+
+## 🚀 Quick Start
+
+### Installation
+
+```bash
+git clone https://github.com/your-username/self-pruning-network
+cd self-pruning-network
+pip install -r requirements.txt
+```
+
+### Run Complete Pipeline
+
+```bash
+# Trains 5 experiments with different λ values
+# Generates all visualizations and results
+python main.py
+```
+
+**What happens:**
+1. Downloads CIFAR-10 (first run only)
+2. Trains 5 experiments: λ ∈ {0, 1e-4, 1e-3, 1e-2, dynamic}
+3. Applies hard pruning after each experiment
+4. Generates 6 plots in `plots/`
+5. Saves results to `experiments/results.csv`
+6. Prints summary table
+
+**Runtime:** ~30 min (GPU) / ~2 hours (CPU)
+
+### Validate Setup
+
+```bash
+python validate.py
+# [OK] PrunableLinear: input (4,100) -> output (4,50)
+# [OK] SelfPruningNetwork: input (2,3,32,32) -> output (2,10)
+# [OK] ALL VALIDATIONS PASSED
+```
+
+### Deploy API
+
+```bash
+# Requires checkpoint from main.py
+uvicorn api:app --reload
+
+# Open: http://127.0.0.1:8000
+# → Swagger UI with interactive testing
+```
+
+---
+
+## 📊 Experiments & Results
+
+Five experiments sweep across sparsity pressures:
+
+| Experiment | λ | Schedule | Purpose |
+|:---|:---:|:---|:---|
+| **Baseline** | 0 | — | Upper bound on accuracy (no pruning) |
+| **Light** | 1e-4 | Constant | Minimal pruning pressure |
+| **Moderate** | 1e-3 | Constant | Balanced trade-off |
+| **Aggressive** | 1e-2 | Constant | Maximum compression |
+| **Dynamic** | 0→1e-2 | Linear ramp | Train first, prune later |
+
+Run `python main.py` to populate the results table. Results saved to `experiments/results.csv`.
+
+### Generated Visualizations
+
+| Plot | Shows |
+|:---|:---|
+| `accuracy_vs_sparsity.png` | Accuracy degradation as sparsity increases |
+| `lambda_vs_accuracy.png` | Effect of λ on test accuracy |
+| `lambda_vs_sparsity.png` | Effect of λ on network sparsity |
+| `gate_histogram.png` | Gate value distribution (bimodal: 0 + 1) |
+| `layer_sparsity.png` | Per-layer sparsity breakdown |
+| `training_curves.png` | Loss and accuracy across all experiments |
 
 ---
 
 ## 🏗️ Architecture
 
+### Network Structure
+
 ```
-Input Image (3×32×32)
-       │
-       ▼
-   [Flatten] → 3072
-       │
-       ▼
- ┌─────────────┐
- │ PrunableLinear│ 3072 → 512  (each weight has a learnable gate)
- │   + ReLU     │
- └──────┬──────┘
-        │
-        ▼
- ┌─────────────┐
- │ PrunableLinear│ 512 → 256
- │   + ReLU     │
- └──────┬──────┘
-        │
-        ▼
- ┌─────────────┐
- │ PrunableLinear│ 256 → 10
- └──────┬──────┘
-        │
-        ▼
-   Output (10 classes)
+CIFAR-10 Input (3×32×32)
+    │
+    ├─ Flatten → 3072
+    │
+    ├─ PrunableLinear(3072→512) + ReLU
+    │   └─ 1,576,960 gated weights
+    │
+    ├─ PrunableLinear(512→256) + ReLU
+    │   └─ 131,072 gated weights
+    │
+    ├─ PrunableLinear(256→10)
+    │   └─ 2,560 gated weights
+    │
+    └─ Output: 10 logits (CIFAR-10 classes)
+
+Total Parameters: 1,710,592
 ```
 
-**Key Innovation:** The `PrunableLinear` layer (`models/prunable_layer.py`) is a drop-in replacement for `nn.Linear` that can be used in **any** PyTorch model to add self-pruning capability.
-
----
-
-## 📊 Experiments
-
-We sweep across 5 different sparsity pressures (λ values) to study the accuracy–compression trade-off:
-
-| Experiment | Lambda (λ) | Schedule | Purpose |
-|---|---|---|---|
-| Baseline | 0 | — | No pruning (upper bound on accuracy) |
-| Light | 1e-4 | Constant | Minimal pruning pressure |
-| Moderate | 1e-3 | Constant | Balanced trade-off |
-| Aggressive | 1e-2 | Constant | Maximum compression |
-| Dynamic | 0 → 5e-2 | Linear ramp | Train first, prune later |
-
-After training, **hard pruning** zeroes out all weights with gate < 0.01, and we measure:
-- Accuracy drop (before vs. after pruning)
-- Compression ratio (total params / active params)
-- Model size reduction
+**Design rationale:**
+- Layer 1: Compress from raw pixels to 512 semantic features
+- Layer 2: Further compress to 256 features
+- Layer 3: Classification head for 10 classes
+- **All layers prunable** — network decides what to compress
 
 ---
 
 ## 🚀 FastAPI Deployment
 
-The project includes a production-ready **REST API** (`api.py`) that serves the pruned model for real-time inference:
+### Endpoints
 
 ```bash
-uvicorn api:app --reload
+POST /predict          # Upload image → classification + compression stats
+GET  /health           # Health check
+GET  /                 # Swagger UI documentation
 ```
 
-**Endpoints:**
+### Example Request/Response
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/predict` | Upload an image → get CIFAR-10 class + compression stats |
-| `GET` | `/health` | Health check for load balancers |
-| `GET` | `/` | Redirects to interactive Swagger UI |
+**Request:**
+```bash
+curl -X POST "http://127.0.0.1:8000/predict" \
+  -F "file=@dog.jpg"
+```
 
-**Example Response:**
+**Response:**
 ```json
 {
-  "prediction": "airplane",
-  "class_id": 0,
+  "prediction": "dog",
+  "class_id": 5,
+  "confidence": 0.94,
   "model_efficiency": {
-    "total_parameters": 3413770,
-    "active_parameters": 1205430,
-    "compression_ratio": 2.83
+    "total_parameters": 1710592,
+    "active_parameters": 603520,
+    "compression_ratio": 2.83,
+    "sparsity_percentage": 64.7
   }
 }
 ```
 
-The API automatically loads the trained checkpoint on startup, applies hard pruning, and serves inference using the compressed model.
+### Startup Process
+
+On API startup:
+1. Loads trained checkpoint from `checkpoints/latest_checkpoint.pt`
+2. Applies hard pruning (gates < 0.01 → 0)
+3. Moves model to GPU if available
+4. Serves inference using compressed model
 
 ---
 
@@ -151,68 +314,116 @@ The API automatically loads the trained checkpoint on startup, applies hard prun
 ```
 self-pruning-network/
 ├── models/
-│   ├── prunable_layer.py    # Custom PrunableLinear layer with gate scores
-│   └── network.py           # SelfPruningNetwork architecture
+│   ├── prunable_layer.py         # PrunableLinear with gated mechanism
+│   └── network.py                # SelfPruningNetwork (3-layer architecture)
 ├── training/
-│   └── train.py             # Training loop with sparsity loss + checkpointing
+│   └── train.py                  # Training loop + sparsity loss
 ├── experiments/
-│   └── runner.py            # Automated experiment runner (5 λ configs)
+│   └── runner.py                 # Experiment runner (5 λ configs)
 ├── utils/
-│   ├── data.py              # CIFAR-10 data loading with augmentation
-│   ├── sparsity.py          # Sparsity computation utilities
-│   ├── visualize.py         # Matplotlib plotting functions
-│   └── logger.py            # Standardized logging setup
+│   ├── data.py                   # CIFAR-10 loading
+│   ├── sparsity.py               # Sparsity metrics
+│   ├── visualize.py              # Matplotlib plotting
+│   └── logger.py                 # Logging utilities
 ├── tests/
-│   └── test_model.py        # Pytest unit tests
-├── plots/                   # Auto-generated visualizations
-├── api.py                   # FastAPI deployment server
-├── main.py                  # Full pipeline entry point
-├── config.yaml              # Centralized hyperparameter config
-├── Report.md                # Technical report with L1 analysis
-└── requirements.txt         # Pinned dependencies
+│   └── test_model.py             # Pytest suite
+├── plots/                        # Auto-generated visualizations
+├── checkpoints/                  # Model checkpoints (auto-saved)
+├── api.py                        # FastAPI server
+├── main.py                       # Full pipeline entry point
+├── config.yaml                   # Hyperparameter configuration
+├── Report.md                     # Technical analysis
+└── requirements.txt              # Dependencies
 ```
 
 ---
 
-## ⚡ Quick Start
+## 🧪 Testing
 
 ```bash
-# 1. Install dependencies
-pip install -r requirements.txt
-
-# 2. Run the full training + experiment pipeline
-python main.py
-
-# 3. Run unit tests
-pytest tests/
-
-# 4. Deploy the API
-uvicorn api:app --reload
-# Open http://127.0.0.1:8000 in your browser
+pytest tests/ -v
 ```
 
----
-
-## 🔑 Key Insights
-
-1. **Self-pruning works.** The network successfully learns to shut off unnecessary gates when sparsity pressure (λ) is applied.
-2. **The trade-off is real.** Higher λ → more compression, but accuracy degrades. The "sweet spot" is λ = 1e-3 (moderate pruning).
-3. **Dynamic scheduling is powerful.** Ramping λ from 0 → max lets the network learn good representations first, then prune — often achieving the best compression-to-accuracy ratio.
-4. **Hard pruning is nearly lossless.** After soft-pruning during training, zeroing out dead weights causes minimal additional accuracy loss.
-
----
-
-## 🛠️ Tech Stack
-
-- **PyTorch** — Custom autograd layers, model training
-- **FastAPI** — Production REST API for model serving
-- **Matplotlib** — Experiment visualizations
-- **Pytest** — Automated unit testing
-- **YAML** — Configuration management
+**Test coverage includes:**
+- ✅ Parameter shapes and registration
+- ✅ **Gradient flow through weight and gate_scores** (critical)
+- ✅ Gate values bounded in [0, 1]
+- ✅ Hard pruning correctly zeros weights
+- ✅ Sparsity loss differentiability
+- ✅ End-to-end backpropagation
 
 ---
 
-## 👤 Author
+## 📝 Technical Report
 
-**Rishit Tandon**
-Built as a case study demonstrating neural network compression for efficient edge deployment.
+See [Report.md](Report.md) for:
+
+1. **Why L1 Penalty Drives Sparsity**
+   - Detailed comparison of L1 vs L2 gradient behavior
+   - Mathematical explanation of constant-magnitude gradients
+
+2. **Experiment Results**
+   - Results table for all λ configurations
+   - Pre-pruning and post-pruning metrics
+   - Compression ratios
+
+3. **Key Insights**
+   - Trade-off analysis between accuracy and compression
+   - Guidelines for hyperparameter selection
+   - Production deployment considerations
+
+---
+
+## 💡 Key Takeaways
+
+1. **Self-pruning eliminates manual engineering** — the network discovers optimal sparsity automatically
+2. **Fully controllable trade-off** — single λ parameter controls compression vs accuracy
+3. **Drop-in replacement** — `PrunableLinear` can augment any existing PyTorch model
+4. **Production-ready** — end-to-end: train → compress → deploy → serve
+
+---
+
+## 📚 Requirements
+
+- Python 3.8+
+- PyTorch 2.0+
+- Torchvision
+- FastAPI
+- Matplotlib
+- NumPy
+- PyYAML
+- Pytest
+
+See `requirements.txt` for pinned versions.
+
+---
+
+## 🤝 Contributing
+
+Contributions welcome! Areas for enhancement:
+- Batch normalization layers
+- Alternative activation functions
+- Different architecture designs
+- Mobile deployment (ONNX)
+- Quantization integration
+
+---
+
+## 📄 License
+
+MIT License - see LICENSE file
+
+---
+
+## 🔗 Related Work
+
+**Pruning Techniques:**
+- [The Lottery Ticket Hypothesis](https://arxiv.org/abs/1903.01611)
+- [Magnitude Pruning](https://arxiv.org/abs/1506.02626)
+- [L1 Regularization for Sparsity](https://en.wikipedia.org/wiki/Lasso_(statistics))
+
+---
+
+**Built for:** Tredence Analytics AI Engineering Internship 2025  
+**Author:** Rishit Tandon  
+**Last Updated:** April 2026

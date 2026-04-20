@@ -178,7 +178,8 @@ def plot_layer_sparsity(model, save_dir: str = "plots"):
 
     ax.set_xlabel("Sparsity (%)", fontsize=14)
     ax.set_title("Layer-wise Sparsity", fontsize=16, fontweight="bold", color="#e94560")
-    ax.set_xlim(0, max(sparsities) * 1.2 if sparsities else 100)
+    max_sp = max(sparsities) if sparsities else 0
+    ax.set_xlim(0, max(max_sp * 1.2, 10))  # At least 10% range to avoid singular xlim
     ax.grid(True, linestyle="--", axis="x")
 
     plt.tight_layout()

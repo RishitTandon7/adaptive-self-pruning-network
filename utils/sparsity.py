@@ -7,6 +7,9 @@ the network and per-layer.
 
 import torch
 from models.network import SelfPruningNetwork
+from utils.logger import setup_logger
+
+logger = setup_logger("sparsity")
 
 
 def compute_sparsity_stats(model: SelfPruningNetwork, threshold: float = 0.01) -> dict:
@@ -64,12 +67,12 @@ def log_sparsity(model: SelfPruningNetwork, epoch: int, threshold: float = 0.01)
         threshold: Gate threshold for pruning.
     """
     stats = compute_sparsity_stats(model, threshold)
-    print(f"\n--- Sparsity Report (Epoch {epoch}) ---")
-    print(f"  Overall: {stats['overall_sparsity']:.2%}  "
+    logger.info(f"\n--- Sparsity Report (Epoch {epoch}) ---")
+    logger.info(f"  Overall: {stats['overall_sparsity']:.2%}  "
           f"({stats['pruned_weights']:,}/{stats['total_weights']:,} weights pruned)")
 
     for name, ls in stats["layer_stats"].items():
-        print(f"  {name:>8s}: {ls['sparsity']:>6.2%}  "
+        logger.info(f"  {name:>8s}: {ls['sparsity']:>6.2%}  "
               f"(mean gate={ls['mean_gate']:.4f}, "
               f"range=[{ls['min_gate']:.4f}, {ls['max_gate']:.4f}])")
-    print()
+    logger.info("")

@@ -11,6 +11,9 @@ checkpoints/
 # Dataset
 data/
 
+# Test artifacts
+test_image.png
+
 # Logs
 *.log
 

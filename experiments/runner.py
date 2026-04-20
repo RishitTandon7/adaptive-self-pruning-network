@@ -152,7 +152,7 @@ def run_all_experiments(
         {"name": "Light (L=1e-4)",      "lambda_sparse": 1e-4,  "lambda_schedule": "constant"},
         {"name": "Moderate (L=1e-3)",   "lambda_sparse": 1e-3,  "lambda_schedule": "constant"},
         {"name": "Aggressive (L=1e-2)", "lambda_sparse": 1e-2,  "lambda_schedule": "constant"},
-        {"name": "Dynamic L",           "lambda_sparse": 0.0,   "lambda_schedule": "dynamic", "lambda_max": 5e-2},
+        {"name": "Dynamic L",           "lambda_sparse": 0.0,   "lambda_schedule": "dynamic", "lambda_max": 1e-2},
     ]
 
     all_results = []
