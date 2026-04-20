@@ -119,7 +119,7 @@ class PrunableLinear(nn.Module):
 
 ### 2. The Sparsity Loss (L1 Regularization)
 
-$$\text{SparsityLoss} = \sum_{\text{all layers}} \sum_{i} \sigma(\text{gate\_score}_i)$$
+$$\text{SparsityLoss} = \sum_{\text{all layers}} \sum_{i} \sigma(\text{gate score}_i)$$
 
 **Why L1 drives sparsity:**
 
