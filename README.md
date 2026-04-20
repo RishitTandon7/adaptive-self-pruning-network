@@ -271,6 +271,9 @@ Total Parameters: 1,710,592
 - Layer 3: Classification head for 10 classes
 - **All layers prunable** — network decides what to compress
 
+> **Note on Architecture (MLP vs CNN):** An MLP architecture was deliberately chosen over a CNN to demonstrate the self-pruning mechanism in its purest form. In a CNN, spatial weight sharing makes the interpretation of gate-based pruning more complex. With an MLP, there is a clear 1-to-1 mapping between learnable gates and distinct parameters. 
+> While this MLP tops out around ~60% accuracy on CIFAR-10 (even with standard data augmentation like Random Crops and Horizontal Flips, which are included in our pipeline), it serves as a foundational proof-of-concept for the L1-driven sparsity mechanism.
+
 ---
 
 ## 🚀 FastAPI Deployment

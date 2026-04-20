@@ -4,8 +4,10 @@ __pycache__/
 *$py.class
 
 # PyTorch Checkpoints
-checkpoints/
+checkpoints/*
+!checkpoints/pretrained_model.pt
 *.pt
+!pretrained_model.pt
 *.pth
 
 # Dataset

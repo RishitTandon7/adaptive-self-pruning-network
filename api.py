@@ -31,10 +31,17 @@ async def lifespan(app: FastAPI):
     
     model = SelfPruningNetwork().to(device)
     checkpoint_path = "checkpoints/latest_checkpoint.pt"
+    pretrained_path = "checkpoints/pretrained_model.pt"
     
+    loaded_path = None
     if os.path.exists(checkpoint_path):
-        logger.info(f"Loading checkpoint from {checkpoint_path}")
-        checkpoint = torch.load(checkpoint_path, map_location=device)
+        loaded_path = checkpoint_path
+    elif os.path.exists(pretrained_path):
+        loaded_path = pretrained_path
+        
+    if loaded_path:
+        logger.info(f"Loading checkpoint from {loaded_path}")
+        checkpoint = torch.load(loaded_path, map_location=device)
         model.load_state_dict(checkpoint['model_state_dict'])
         
         # Apply hard pruning for actual inference speedup/memory saving
@@ -42,7 +49,7 @@ async def lifespan(app: FastAPI):
         prune_results = model.hard_prune_all(threshold=threshold)
         logger.info("Applied hard pruning to loaded model for efficient inference.")
     else:
-        logger.warning("No checkpoint found. Using untrained model! Please run training first.")
+        logger.warning("No checkpoint found! Please run training first or ensure pretrained_model.pt is available. Using untrained model for now.")
         
     model.eval()
     yield

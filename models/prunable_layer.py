@@ -36,11 +36,10 @@ class PrunableLinear(nn.Module):
         self.weight = nn.Parameter(torch.empty(out_features, in_features))
         self.bias = nn.Parameter(torch.zeros(out_features))
 
-        # Gate scores — initialized to 0.0 so sigmoid ≈ 0.5 (neutral starting point).
-        # This allows the sparsity regularizer to push unnecessary gates below
-        # the pruning threshold within a reasonable number of training epochs,
-        # while the classification loss keeps important gates active.
-        self.gate_scores = nn.Parameter(torch.full((out_features, in_features), 0.0))
+        # Gate scores — initialized to 3.0 so sigmoid ≈ 0.95 (near full capacity).
+        # This allows the network to start with most weights active,
+        # letting the sparsity regularizer prune them gracefully over time.
+        self.gate_scores = nn.Parameter(torch.full((out_features, in_features), 3.0))
 
         # Kaiming uniform initialization for weights (same as nn.Linear default)
         nn.init.kaiming_uniform_(self.weight, a=5**0.5)
