@@ -347,6 +347,19 @@ self-pruning-network/
 ```
 
 ---
+### ⚙️ Configuration (`config.yaml`)
+
+The training pipeline is fully parameter-driven to promote experimentation. By modifying `config.yaml`, you can easily alter the network's behavior without touching the code.
+
+**Example:** Changing the number of epochs to train longer:
+```yaml
+training:
+  epochs: 30  # Increased from 15 to allow deeper pruning convergence
+  batch_size: 128
+```
+When you run `python main.py`, the pipeline automatically parses this file and adjusts the `epochs` argument across all 5 experiments.
+
+---
 
 ## 🧪 Testing
 

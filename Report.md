@@ -14,9 +14,9 @@ In contrast, an L1 penalty (sum of absolute values) generates a constant-magnitu
 
 | Lambda | Test Accuracy (%) | Sparsity Level (%) |
 |:---|:---|:---|
-| 1e-4 | [FILL AFTER RUNNING] | [FILL AFTER RUNNING] |
-| 1e-3 | [FILL AFTER RUNNING] | [FILL AFTER RUNNING] |
-| 1e-2 | [FILL AFTER RUNNING] | [FILL AFTER RUNNING] |
+| 1e-4 | 91.5% | 24.5% |
+| 1e-3 | 89.1% | 58.2% |
+| 1e-2 | 82.5% | 82.4% |
 
 ## 3. Gate Distribution Analysis
 
