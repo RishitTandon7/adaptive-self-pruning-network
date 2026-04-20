@@ -1,0 +1,15 @@
+training:
+  epochs: 15
+  batch_size: 128
+  learning_rate: 0.001
+  prune_threshold: 0.01
+
+model:
+  input_dim: 3072
+  hidden_dims: [512, 256]
+  output_dim: 10
+
+logging:
+  log_level: INFO
+  log_file: "training.log"
+  checkpoint_dir: "checkpoints"

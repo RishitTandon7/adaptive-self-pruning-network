@@ -1,0 +1,6 @@
+Experiment,Lambda,Schedule,Epochs,Pre-Prune Accuracy (%),Sparsity (%),Post-Prune Accuracy (%),Total Params,Nonzero Params,Compression Ratio
+Baseline (L=0),0.0,constant,15,47.92,0.00,47.92,3413770,3413770,1.00
+Light (L=1e-4),0.0001,constant,15,55.24,0.00,55.24,3413770,3413770,1.00
+Moderate (L=1e-3),0.001,constant,15,52.84,0.00,52.84,3413770,3413770,1.00
+Aggressive (L=1e-2),0.01,constant,15,47.18,0.00,47.18,3413770,3413770,1.00
+Dynamic L,0.0,dynamic,15,37.33,0.00,37.33,3413770,3413770,1.00
